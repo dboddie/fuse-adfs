@@ -146,7 +146,7 @@ class ADFS(Fuse):
         
         if obj is None:
         
-            return None
+            return -1
         
         return obj.stat()
     
