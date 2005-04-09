@@ -133,6 +133,12 @@ class ADFS(Fuse):
         
             self.adffile.close()
             raise ADFS_Error
+        
+        self.info_handlers = \
+        {
+            0xfca00:    self.squash_info,
+            0xddc00:    self.nspark_info
+        }
     
     def getattr(self, path):
     
@@ -140,13 +146,14 @@ class ADFS(Fuse):
         
         if obj is None:
         
-            raise ADFS_Error, "getattr: no such path (%s)" % path
+            return None
         
         return obj.stat()
     
     def readlink(self, path):
     
-        raise ADFS_Error, "readlink: not supported"
+        # readlink is not supported
+        return None
     
     def getdir(self, path):
     
@@ -154,37 +161,44 @@ class ADFS(Fuse):
         
         if obj is None or isinstance(obj, File):
         
-            raise ADFS_Error, "getdir: no such path (%s)" % path
+            return None
         
-        return map(lambda f: (f.name, 0), obj.contents())
+        return map(lambda f: (self.encode_name_from_object(f), 0), obj.contents())
     
     def unlink(self, path):
     
-        raise ADFS_Error, "unlink: not supported"
+        # unlink is not supported
+        return None
     
     def rmdir(self, path):
     
-        raise ADFS_Error, "rmdir: not supported"
+        # rmdir is not supported
+        return None
     
     def symlink(self, path):
     
-        raise ADFS_Error, "symlink: not supported"
+        # symlink is not supported
+        return None
     
     def rename(self, path):
     
-        raise ADFS_Error, "rename: not supported"
+        # rename is not supported
+        return None
     
     def link(self, path):
     
-        raise ADFS_Error, "link: not supported"
+        # link is not supported
+        return None
     
     def chmod(self, path):
     
-        raise ADFS_Error, "chmod: not supported"
+        # chmod is not supported
+        return None
     
     def chown(self, path):
     
-        raise ADFS_Error, "chown: not supported"
+        # chown is not supported
+        return None
     
     def truncate(self, path, size):
     
@@ -192,29 +206,32 @@ class ADFS(Fuse):
         
         if obj is None or isinstance(obj, Directory):
         
-            raise ADFS_Error, "truncate: no such path (%s)" % path
+            return None
         
         return obj.data[:size]
     
     def mknod(self, path):
     
-        raise ADFS_Error, "mknod: not supported"
+        # mknod is not supported
+        return None
     
     def utime(self, path):
     
-        raise ADFS_Error, "utime: not supported"
+        # utime is not supported
+        return None
     
     def open(self, path, flags):
     
         if flags & (os.O_WRONLY | os.O_RDWR) != 0:
         
-            raise ADFS_Error, "open: this filesystem is read-only"
+            # This filesystem is read-only.
+            return None
         
         obj = self.find_file_within_image(path)
         
         if obj is None or isinstance(obj, Directory):
         
-            raise ADFS_Error, "open: no such path (%s)" % path
+            return None
         
         return 0
     
@@ -224,13 +241,14 @@ class ADFS(Fuse):
         
         if obj is None or isinstance(obj, Directory):
         
-            raise ADFS_Error, "read: no such path (%s)" % path
+            return None
         
         return obj.data[offset:offset+length]
     
     def write(self, path):
     
-        raise ADFS_Error, "write: not supported"
+        # write is not supported
+        return None
     
     def release(self, path, flags):
     
@@ -254,15 +272,15 @@ class ADFS(Fuse):
         
             objs = self.adfsdisc.files
         
-        elements = path.split(u"/")
+        elements = path.split("/")
         
         # Remove any empty elements.
-        elements = filter(lambda x: x != u"", elements)
+        elements = filter(lambda x: x != "", elements)
         
         if elements == []:
         
             # Special case for root directory.
-            return Directory(u"/", objs)
+            return Directory("/", objs)
         
         for this_obj in objs:
         
@@ -272,7 +290,7 @@ class ADFS(Fuse):
             if type(this_obj[1]) != type([]):
             
                 # A file is found. 
-                obj_name = this_obj[0]
+                obj_name = self.encode_name_from_entry(this_obj)
                 
                 if obj_name == elements[0]:
                 
@@ -291,7 +309,7 @@ class ADFS(Fuse):
                         return None
                 
                 elif self.adfsdisc.disc_type.find("adE") == -1 and \
-                     elements[0] == obj_name + u".inf":
+                     elements[0] == obj_name + ".inf":
                 
                     # Old style discs will have .inf files, too.
                     
@@ -318,7 +336,7 @@ class ADFS(Fuse):
             else:
             
                 # A directory is found.
-                obj_name = this_obj[0]
+                obj_name = self.encode_name_from_entry(this_obj)
                 
                 if obj_name == elements[0]:
                 
@@ -335,7 +353,7 @@ class ADFS(Fuse):
                         # More path elements need to be satisfied; descend
                         # further.
                         return self.find_file_within_image(
-                            u"/".join(elements[1:]), this_obj[1]
+                            "/".join(elements[1:]), this_obj[1]
                             )
         
         # No matching objects were found.
@@ -360,6 +378,94 @@ class ADFS(Fuse):
                 number = number + self.count_files(root = obj[1])
         
         return number
+    
+    def encode_name_from_object(self, obj):
+    
+        if isinstance(obj, File):
+        
+            return self.encode_name_from_entry(
+                (obj.name, obj.data, obj.load, obj.exec_, obj.length)
+                )
+        
+        else:
+        
+            return ".".join(obj.name.split("/"))
+    
+    def encode_name_from_entry(self, obj):
+    
+        name = obj[0]
+        
+        # If the name contains a slash then replace it with a dot.
+        new_name = ".".join(name.split("/"))
+        
+        if self.adfsdisc.disc_type.find("adE") == 0:
+        
+            if type(obj[1]) != type([]) and "." not in new_name:
+            
+                # Construct a suffix from the object's load address/filetype.
+                
+                info_handler = self.info_handlers.get(obj[2] & 0xfff00, None)
+                
+                # Provide default values for the file type, MIME type and
+                # length.
+                filetype = (obj[2] >> 8) & 0xfff
+                mimetype = None
+                length = obj[4]
+                
+                if info_handler:
+                
+                    filetype, mimetype, length = info_handler(
+                        obj, filetype, mimetype, length
+                        )
+                
+                suffix = "%03x" % filetype
+                new_name = new_name + "." + suffix
+        
+        return new_name
+    
+    def squash_info(self, obj, def_filetype, def_mimetype, def_length):
+    
+        # Each Squash file contains the length of the data they
+        # contain once it is decompressed.
+        
+        try:
+        
+            length = self.adfsdisc.str2num(4, obj[1][4:8])
+        
+        except IndexError:
+        
+            # Use the default length supplied.
+            length = def_length
+        
+        # For Squash files, use the filetype in the header for
+        # this file's suffix. (Use the disc image's str2num
+        # method to extract the value from the file.)
+        
+        try:
+        
+            filetype = (
+                self.adfsdisc.str2num(4, obj[1][8:12]) >> 8
+                ) & 0xfff
+        
+        except IndexError:
+        
+            filetype = 0xfca
+        
+        # Let the client discover the MIME type by reading
+        # the file.
+        mimetype = None
+        
+        return filetype, mimetype, length
+    
+    def nspark_info(self, obj, def_filetype, def_mimetype, def_length):
+    
+        # For the archive as a whole, we run the nspark utility with
+        # a contradictory set of options.
+        
+        #command = "nspark -qtv"
+        
+        # For now, just return the default values.
+        return def_filetype, def_mimetype, def_length
 
 
 if __name__ == "__main__":
@@ -371,6 +477,17 @@ if __name__ == "__main__":
             )
         sys.exit(1)
 
+    mount_point = os.path.abspath(sys.argv[-2])
+    
+    if not os.path.exists(mount_point):
+    
+        os.mkdir(mount_point)
+    
+    elif not os.path.isdir(mount_point):
+    
+        sys.stderr.write("Cannot use %s as a mount point\n" % mount_point)
+        sys.exit(1)
+    
     server = ADFS(sys.argv[:-1], path = sys.argv[-1])
     server.multithreaded = 1
     server.main()
