@@ -29,6 +29,7 @@
 <li><a class="reference" href="#requirements" id="id2" name="id2">Requirements</a></li>
 <li><a class="reference" href="#installing-fuse-adfs" id="id3" name="id3">Installing fuse_adfs</a></li>
 <li><a class="reference" href="#mounting-an-image" id="id4" name="id4">Mounting an image</a></li>
+<li><a class="reference" href="#unmounting-an-image" id="id5" name="id5">Unmounting an image</a></li>
 </ul>
 </div>
 <div class="section" id="introduction">
@@ -71,7 +72,11 @@ python setup.py install
 </div>
 <div class="section" id="installing-fuse-adfs">
 <h1><a class="toc-backref" href="#id3" name="installing-fuse-adfs">Installing fuse_adfs</a></h1>
-<p>Enter the <tt class="docutils literal"><span class="pre">fuse-adfs</span></tt> directory and, as root, type:</p>
+<p>Enter the <tt class="docutils literal"><span class="pre">fuse-adfs</span></tt> directory and type:</p>
+<pre class="literal-block">
+python setup.py build
+</pre>
+<p>Then, as root, type:</p>
 <pre class="literal-block">
 python setup.py install
 </pre>
@@ -94,7 +99,10 @@ fuse_adfs.py &lt;mount point&gt; &lt;image path&gt;
 otherwise an existing directory can be used instead. Note that, if the
 directory is not empty, its contents will be inaccessible until after the
 image has been unmounted - they will not be deleted.</p>
-<p>When you have finished with the image, type:</p>
+</div>
+<div class="section" id="unmounting-an-image">
+<h1><a class="toc-backref" href="#id5" name="unmounting-an-image">Unmounting an image</a></h1>
+<p>When you have finished with an image, type:</p>
 <pre class="literal-block">
 fusermount -u &lt;mount point&gt;
 </pre>

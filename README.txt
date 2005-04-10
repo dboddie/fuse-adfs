@@ -7,6 +7,7 @@ fuse_adfs
 
 .. contents::
 
+
 Introduction
 ------------
 
@@ -19,6 +20,7 @@ With this filesystem, disc images can be mounted in the same way as floppy
 discs and CDROMs, and navigated at the shell or with a file manager. The
 filesystem translates ADFS-style filenames to Unix-friendly ones and adds
 suffixes to filenames to help applications recognize certain types of files.
+
 
 Requirements
 ------------
@@ -48,12 +50,18 @@ As root, install the Python bindings with the following command::
 
 The ``fuse_adfs`` utility can now be installed.
 
+
 Installing fuse_adfs
 --------------------
 
-Enter the ``fuse-adfs`` directory and, as root, type::
+Enter the ``fuse-adfs`` directory and type::
+
+  python setup.py build
+
+Then, as root, type::
 
   python setup.py install
+
 
 Mounting an image
 -----------------
@@ -76,7 +84,11 @@ otherwise an existing directory can be used instead. Note that, if the
 directory is not empty, its contents will be inaccessible until after the
 image has been unmounted - they will not be deleted.
 
-When you have finished with the image, type::
+
+Unmounting an image
+-------------------
+
+When you have finished with an image, type::
 
   fusermount -u <mount point>
 
