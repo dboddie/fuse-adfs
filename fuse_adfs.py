@@ -76,7 +76,6 @@ class File:
         d[stat.ST_GID] = os.getgid()
         d[stat.ST_UID] = os.getuid()
         d[stat.ST_MTIME] = from_riscos_time(self.load, self.exec_)
-        print d[stat.ST_MTIME]
         
         return d
 

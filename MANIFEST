@@ -1,5 +1,6 @@
 ADFSlib.py
 fuse_adfs.py
+fuse_setup.py
 MANIFEST
 README.html
 README.txt
