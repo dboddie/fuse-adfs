@@ -480,10 +480,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     mount_point = os.path.abspath(sys.argv[-2])
+    created_mount_point = 0
     
     if not os.path.exists(mount_point):
     
         os.mkdir(mount_point)
+        created_mount_point = 1
     
     elif not os.path.isdir(mount_point):
     
@@ -493,5 +495,9 @@ if __name__ == "__main__":
     server = ADFS(sys.argv[:-1], path = sys.argv[-1])
     server.multithreaded = 1
     server.main()
+    
+    if created_mount_point == 1:
+    
+        os.rmdir(mount_point)
     
     sys.exit(0)

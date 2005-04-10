@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="Docutils 0.3.7: http://docutils.sourceforge.net/" />
+<title>fuse_adfs</title>
+<meta name="author" content="David Boddie" />
+<meta name="date" content="2005-04-10" />
+<link rel="stylesheet" href="default.css" type="text/css" />
+</head>
+<body>
+<div class="document" id="fuse-adfs">
+<h1 class="title">fuse_adfs</h1>
+<table class="docinfo" frame="void" rules="none">
+<col class="docinfo-name" />
+<col class="docinfo-content" />
+<tbody valign="top">
+<tr><th class="docinfo-name">Author:</th>
+<td>David Boddie</td></tr>
+<tr><th class="docinfo-name">Date:</th>
+<td>2005-04-10</td></tr>
+</tbody>
+</table>
+<div class="contents topic" id="contents">
+<p class="topic-title first"><a name="contents">Contents</a></p>
+<ul class="simple">
+<li><a class="reference" href="#introduction" id="id1" name="id1">Introduction</a></li>
+<li><a class="reference" href="#requirements" id="id2" name="id2">Requirements</a></li>
+<li><a class="reference" href="#installing-fuse-adfs" id="id3" name="id3">Installing fuse_adfs</a></li>
+<li><a class="reference" href="#mounting-an-image" id="id4" name="id4">Mounting an image</a></li>
+</ul>
+</div>
+<div class="section" id="introduction">
+<h1><a class="toc-backref" href="#id1" name="introduction">Introduction</a></h1>
+<p>The <tt class="docutils literal"><span class="pre">fuse_adfs</span></tt> module provides a Filesystem in Userspace (<a class="reference" href="http://fuse.sourceforge.net/">FUSE</a>) utility
+for presenting the contents of ADFS floppy disc images as a mountable
+filesystem on Linux, relying on the <tt class="docutils literal"><span class="pre">ADFSlib</span></tt> module for its image reading
+facilities.</p>
+<p>With this filesystem, disc images can be mounted in the same way as floppy
+discs and CDROMs, and navigated at the shell or with a file manager. The
+filesystem translates ADFS-style filenames to Unix-friendly ones and adds
+suffixes to filenames to help applications recognize certain types of files.</p>
+</div>
+<div class="section" id="requirements">
+<h1><a class="toc-backref" href="#id2" name="requirements">Requirements</a></h1>
+<p>This utility requires both <a class="reference" href="http://fuse.sourceforge.net/">FUSE</a> and the <a class="reference" href="http://cvs.sourceforge.net/viewcvs.py/fuse/python/">Python bindings package for FUSE</a>.
+At the current time, the Python bindings need to be obtained from the FUSE
+CVS repository. To obtain them, open a shell and find a suitable directory to
+put them. First, log in to the SourceForge CVS server:</p>
+<pre class="literal-block">
+cvs -d:pserver:anonymous&#64;cvs.sourceforge.net:/cvsroot/fuse login
+</pre>
+<p>The <tt class="docutils literal"><span class="pre">cvs</span></tt> tool will ask you for a password - just press Return. To retrieve
+the files from the server and put them in a directory called <tt class="docutils literal"><span class="pre">python</span></tt>,
+type:</p>
+<pre class="literal-block">
+cvs -z3 -d:pserver:anonymous&#64;cvs.sourceforge.net:/cvsroot/fuse co -P python
+</pre>
+<p>The <tt class="docutils literal"><span class="pre">setup.py</span></tt> file in the <tt class="docutils literal"><span class="pre">python</span></tt> directory can be used in the normal
+way. At the command line, type the following:</p>
+<pre class="literal-block">
+cd python
+python setup.py build
+</pre>
+<p>As root, install the Python bindings with the following command:</p>
+<pre class="literal-block">
+python setup.py install
+</pre>
+<p>The <tt class="docutils literal"><span class="pre">fuse_adfs</span></tt> utility can now be installed.</p>
+</div>
+<div class="section" id="installing-fuse-adfs">
+<h1><a class="toc-backref" href="#id3" name="installing-fuse-adfs">Installing fuse_adfs</a></h1>
+<p>Enter the <tt class="docutils literal"><span class="pre">fuse-adfs</span></tt> directory and, as root, type:</p>
+<pre class="literal-block">
+python setup.py install
+</pre>
+</div>
+<div class="section" id="mounting-an-image">
+<h1><a class="toc-backref" href="#id4" name="mounting-an-image">Mounting an image</a></h1>
+<p>Before the <tt class="docutils literal"><span class="pre">fuse_adfs.py</span></tt> script can be run, the kernel module that provides
+the userspace support must be loaded. The <tt class="docutils literal"><span class="pre">fuse_setup.py</span></tt> script provided
+can be run as root to load the <tt class="docutils literal"><span class="pre">fuse</span></tt> kernel module as required.</p>
+<p>Alternatively, you can type the following as root:</p>
+<pre class="literal-block">
+modprobe fuse
+</pre>
+<p>As a normal user, you can now mount an ADFS image with the <tt class="docutils literal"><span class="pre">fuse_adfs.py</span></tt>
+utility, using the following syntax:</p>
+<pre class="literal-block">
+fuse_adfs.py &lt;mount point&gt; &lt;image path&gt;
+</pre>
+<p>If the mount point does not exist, a directory will be created for it,
+otherwise an existing directory can be used instead. Note that, if the
+directory is not empty, its contents will be inaccessible until after the
+image has been unmounted - they will not be deleted.</p>
+<p>When you have finished with the image, type:</p>
+<pre class="literal-block">
+fusermount -u &lt;mount point&gt;
+</pre>
+<p>The <tt class="docutils literal"><span class="pre">fuse_adfs.py</span></tt> utility will remove the directory if it created it.</p>
+<blockquote>
+</blockquote>
+</div>
+</div>
+</body>
+</html>

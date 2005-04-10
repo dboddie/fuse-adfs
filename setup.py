@@ -15,6 +15,6 @@ setup(
     url          = "http://www.boddie.org.uk/david/Projects/Python/FUSE",
     version      = fuse_adfs.__version__,
 
-    py_modules   = ["ADFSlib.py"],    
-    scripts      = ["fuse_adfs.py"]
+    py_modules   = ["ADFSlib"],    
+    scripts      = ["fuse_adfs.py", "fuse_setup.py"]
     )
