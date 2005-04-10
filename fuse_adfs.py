@@ -32,7 +32,8 @@ from fuse import Fuse
 import ADFSlib
 
 __author__ = "David Boddie <david@boddie.org.uk>"
-__version__ = "0.10 (Sat 9th April 2005)"
+__version__ = "0.10"
+__date__ = "Saturday 9th April 2005"
 __license__ = "GNU General Public License"
 
 
