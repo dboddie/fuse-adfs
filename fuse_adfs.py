@@ -31,7 +31,9 @@ from fuse import Fuse
 
 import ADFSlib
 
+__author__ = "David Boddie <david@boddie.org.uk>"
 __version__ = "0.10 (Sat 9th April 2005)"
+__license__ = "GNU General Public License"
 
 
 # Find the number of centiseconds between 1900 and 1970.
