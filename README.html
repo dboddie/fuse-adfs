@@ -6,7 +6,7 @@
 <meta name="generator" content="Docutils 0.3.7: http://docutils.sourceforge.net/" />
 <title>fuse_adfs</title>
 <meta name="author" content="David Boddie" />
-<meta name="date" content="2005-04-10" />
+<meta name="date" content="2005-04-29" />
 <link rel="stylesheet" href="default.css" type="text/css" />
 </head>
 <body>
@@ -19,7 +19,9 @@
 <tr><th class="docinfo-name">Author:</th>
 <td>David Boddie</td></tr>
 <tr><th class="docinfo-name">Date:</th>
-<td>2005-04-10</td></tr>
+<td>2005-04-29</td></tr>
+<tr><th class="docinfo-name">Version:</th>
+<td>0.11</td></tr>
 </tbody>
 </table>
 <div class="contents topic" id="contents">
@@ -104,6 +106,10 @@ image has been unmounted - they will not be deleted.</p>
 <div class="section" id="unmounting-an-image">
 <h1><a class="toc-backref" href="#id5" name="unmounting-an-image">Unmounting an image</a></h1>
 <p>When you have finished with an image, type:</p>
+<pre class="literal-block">
+fuse_adfs.py -u &lt;mount point&gt;
+</pre>
+<p>or type:</p>
 <pre class="literal-block">
 fusermount -u &lt;mount point&gt;
 </pre>

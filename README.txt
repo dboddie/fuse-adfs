@@ -3,7 +3,8 @@ fuse_adfs
 =========
 
 :Author: David Boddie
-:Date: 2005-04-10
+:Date: 2005-04-29
+:Version: 0.11
 
 .. contents::
 
@@ -90,6 +91,10 @@ Unmounting an image
 -------------------
 
 When you have finished with an image, type::
+
+  fuse_adfs.py -u <mount point>
+
+or type::
 
   fusermount -u <mount point>
 

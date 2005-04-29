@@ -32,9 +32,9 @@ from fuse import Fuse
 import ADFSlib
 
 __author__ = "David Boddie <david@boddie.org.uk>"
-__version__ = "0.10"
-__date__ = "Saturday 9th April 2005"
-__license__ = "GNU General Public License"
+__version__ = "0.11"
+__date__ = "Friday 29th April 2005"
+__license__ = "GNU General Public License (version 2 or later)"
 
 
 # Find the number of centiseconds between 1900 and 1970.
@@ -177,27 +177,27 @@ class ADFS(Fuse):
         # rmdir is not supported
         return None
     
-    def symlink(self, path):
+    def symlink(self, src, dest):
     
         # symlink is not supported
         return None
     
-    def rename(self, path):
+    def rename(self, src, dest):
     
         # rename is not supported
         return None
     
-    def link(self, path):
+    def link(self, src, dest):
     
         # link is not supported
         return None
     
-    def chmod(self, path):
+    def chmod(self, path, mode):
     
         # chmod is not supported
         return None
     
-    def chown(self, path):
+    def chown(self, path, user, group):
     
         # chown is not supported
         return None
@@ -212,12 +212,17 @@ class ADFS(Fuse):
         
         return obj.data[:size]
     
-    def mknod(self, path):
+    def mknod(self, path, mode, dev):
     
         # mknod is not supported
         return None
     
-    def utime(self, path):
+    def mkdir(self, path, mode):
+    
+        # mkdir is not supported
+        return None
+    
+    def utime(self, path, times):
     
         # utime is not supported
         return None
@@ -247,7 +252,7 @@ class ADFS(Fuse):
         
         return obj.data[offset:offset+length]
     
-    def write(self, path):
+    def write(self, path, buf, offset):
     
         # write is not supported
         return None
@@ -475,29 +480,41 @@ if __name__ == "__main__":
     if len(sys.argv) < 3:
     
         sys.stderr.write(
-            "Usage: %s [fuse options] <mount point> <image>\n" % sys.argv[0]
+            "Usage: %s [fuse options] <mount point> <image>\n" % sys.argv[0]+\
+            "       %s -u <mount point>\n" % sys.argv[0]
             )
         sys.exit(1)
 
-    mount_point = os.path.abspath(sys.argv[-2])
-    created_mount_point = 0
+    if sys.argv[-2] == "-u":
+        mount = 0
+        mount_point = os.path.abspath(sys.argv[-1])
+    else:
+        mount = 1
+        mount_point = os.path.abspath(sys.argv[-2])
     
-    if not os.path.exists(mount_point):
+    if mount == 1:
     
-        os.mkdir(mount_point)
-        created_mount_point = 1
+        created_mount_point = 0
+        
+        if not os.path.exists(mount_point):
+        
+            os.mkdir(mount_point)
+            created_mount_point = 1
+        
+        elif not os.path.isdir(mount_point):
+        
+            sys.stderr.write("Cannot use %s as a mount point\n" % mount_point)
+            sys.exit(1)
+        
+        server = ADFS(sys.argv[:-1], path = sys.argv[-1])
+        server.multithreaded = 1
+        server.main()
+        
+        if created_mount_point == 1:
+        
+            os.rmdir(mount_point)
+    else:
     
-    elif not os.path.isdir(mount_point):
-    
-        sys.stderr.write("Cannot use %s as a mount point\n" % mount_point)
-        sys.exit(1)
-    
-    server = ADFS(sys.argv[:-1], path = sys.argv[-1])
-    server.multithreaded = 1
-    server.main()
-    
-    if created_mount_point == 1:
-    
-        os.rmdir(mount_point)
+        os.system("fusermount -u %s" % mount_point)
     
     sys.exit(0)
