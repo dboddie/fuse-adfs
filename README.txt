@@ -13,13 +13,14 @@ Introduction
 
 The ``fuse_adfs`` module provides a Filesystem in Userspace (FUSE_) utility
 for presenting the contents of ADFS floppy disc images as a mountable
-filesystem on Linux, relying on the ``ADFSlib`` module for its image reading
-facilities.
+filing system on Linux, relying on the ``ADFSlib`` module for its image
+reading facilities.
 
-With this filesystem, disc images can be mounted in the same way as floppy
-discs and CDROMs, and navigated at the shell or with a file manager. The
-filesystem translates ADFS-style filenames to Unix-friendly ones and adds
-suffixes to filenames to help applications recognize certain types of files.
+With this filing system, disc images can be mounted in the same way as floppy
+discs and CDROMs, and navigated at the command line or with a file manager.
+The filing system translates ADFS-style filenames to Unix-friendly ones and
+adds suffixes to filenames to help applications recognize certain types of
+files.
 
 
 Requirements
