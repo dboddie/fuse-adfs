@@ -5,36 +5,35 @@ fuse_adfs.py
 
 A FUSE filesystem for ADFS disc images.
 
-Copyright (C) 2005 David Boddie <david@boddie.org.uk>
+Copyright (C) 2008 David Boddie <david@boddie.org.uk>
 
-This software is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License as
-published by the Free Software Foundation; either version 2 of
-the License, or (at your option) any later version.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
 
-This software is distributed in the hope that it will be useful,
+This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public
-License along with this library; see the file COPYING
-If not, write to the Free Software Foundation, Inc.,
-59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
-
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import os, struct, sys, time
+import errno, os, struct, sys, time
 from os.path import stat
 
+import fuse
 from fuse import Fuse
+fuse.fuse_python_api = (0, 2)
 
 import ADFSlib
 
 __author__ = "David Boddie <david@boddie.org.uk>"
 __version__ = "0.11"
-__date__ = "Friday 29th April 2005"
-__license__ = "GNU General Public License (version 2 or later)"
+__date__ = "Tuesday 25th March 2008"
+__license__ = "GNU General Public License (version 3)"
 
 
 # Find the number of centiseconds between 1900 and 1970.
@@ -58,6 +57,24 @@ class ADFS_Error(Exception):
 
     pass
 
+class ADFSstat(fuse.Stat):
+
+    def __init__(self):
+    
+        fuse.Stat.__init__(self)
+        
+        self.st_atime = 0
+        self.st_ctime = 0
+        self.st_dev = 0
+        self.st_gid = os.getgid()
+        self.st_ino = 0
+        self.st_mode = 0
+        self.st_mtime = 0
+        self.st_nlink = 0
+        self.st_size = 0
+        self.st_uid = os.getuid()
+
+
 class File:
 
     def __init__(self, name, data, load, exec_, length):
@@ -70,57 +87,64 @@ class File:
     
     def stat(self):
     
-        d = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        d[stat.ST_MODE] = stat.S_IFREG | stat.S_IRUSR
-        d[stat.ST_SIZE] = len(self.data)
-        d[stat.ST_GID] = os.getgid()
-        d[stat.ST_UID] = os.getuid()
-        d[stat.ST_MTIME] = from_riscos_time(self.load, self.exec_)
-        
-        return d
+        info = ADFSstat()
+        info.st_mode = stat.S_IFREG | stat.S_IRUSR
+        info.st_size = len(self.data)
+        info.st_mtime = from_riscos_time(self.load, self.exec_)
+        info.st_nlink = 1
+        return info
 
 class Directory:
 
-    def __init__(self, name, objects):
+    def __init__(self, name, objects, time_stamp):
     
         self.name = name
         self.objects = objects
+        self.time_stamp = time_stamp
+    
+    def __repr__(self):
+    
+        return '<Directory "%s">' % self.name
     
     def stat(self):
     
-        d = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        d[stat.ST_MODE] = stat.S_IFDIR | stat.S_IRUSR | stat.S_IXUSR
-        d[stat.ST_GID] = os.getgid()
-        d[stat.ST_UID] = os.getuid()
-        
-        return d
+        info = ADFSstat()
+        info.st_mode = stat.S_IFDIR | stat.S_IRUSR | stat.S_IXUSR
+        info.st_mtime = self.time_stamp
+        info.st_nlink = 2
+        return info
     
     def contents(self):
     
         objs = []
         for obj in self.objects:
         
-            if type(obj[1]) != type([]):
-            
-                objs.append(File(*obj))
-            
+            if isinstance(obj, ADFSlib.ADFSfile):
+                objs.append(File(obj.name, obj.data, obj.load_address, obj.execution_address, obj.length))
             else:
-            
-                objs.append(Directory(*obj))
+                objs.append(Directory(obj.name, obj.files, self.time_stamp))
         
         return objs
+
 
 class ADFS(Fuse):
 
     def __init__(self, *args, **kwargs):
     
-        path = kwargs.get("path", None)
+        Fuse.__init__(self, *args, **kwargs)
         
-        if path is None:
-        
+        self.info_handlers = \
+        {
+            0xfca00:    self.squash_info,
+            0xddc00:    self.nspark_info
+        }
+    
+    def main(self):
+    
+        if hasattr(self, "image"):
+            path = self.image
+        else:
             raise ADFS_Error, "No path specified"
-        
-        Fuse.__init__(self, *args)
         
         try:
         
@@ -129,18 +153,16 @@ class ADFS(Fuse):
         
         except IOError:
         
-            raise ADFS_Error
+            raise ADFS_Error, "Failed to open the image file specified"
         
         except ADFSlib.ADFS_exception:
         
             self.adffile.close()
             raise ADFS_Error
         
-        self.info_handlers = \
-        {
-            0xfca00:    self.squash_info,
-            0xddc00:    self.nspark_info
-        }
+        self.root_time = time.time()
+        
+        return Fuse.main(self)
     
     def getattr(self, path):
     
@@ -155,52 +177,52 @@ class ADFS(Fuse):
     def readlink(self, path):
     
         # readlink is not supported
-        return None
+        return -1
     
-    def getdir(self, path):
+    def readdir(self, path, offset):
     
         obj = self.find_file_within_image(path)
         
-        if obj is None or isinstance(obj, File):
+        if obj is not None and isinstance(obj, Directory):
         
-            return None
-        
-        return map(lambda f: (self.encode_name_from_object(f), 0), obj.contents())
+            for entry in obj.contents():
+            
+                yield fuse.Direntry(self.encode_name_from_object(entry))
     
     def unlink(self, path):
     
         # unlink is not supported
-        return None
+        return -1
     
     def rmdir(self, path):
     
         # rmdir is not supported
-        return None
+        return -1
     
     def symlink(self, src, dest):
     
         # symlink is not supported
-        return None
+        return -1
     
     def rename(self, src, dest):
     
         # rename is not supported
-        return None
+        return -1
     
     def link(self, src, dest):
     
         # link is not supported
-        return None
+        return -errno.ENOLINK
     
     def chmod(self, path, mode):
     
         # chmod is not supported
-        return None
+        return -1
     
     def chown(self, path, user, group):
     
         # chown is not supported
-        return None
+        return -1
     
     def truncate(self, path, size):
     
@@ -208,37 +230,37 @@ class ADFS(Fuse):
         
         if obj is None or isinstance(obj, Directory):
         
-            return None
+            return -1
         
         return obj.data[:size]
     
     def mknod(self, path, mode, dev):
     
         # mknod is not supported
-        return None
+        return -1
     
     def mkdir(self, path, mode):
     
         # mkdir is not supported
-        return None
+        return -1
     
     def utime(self, path, times):
     
         # utime is not supported
-        return None
+        return -1
     
     def open(self, path, flags):
     
         if flags & (os.O_WRONLY | os.O_RDWR) != 0:
         
             # This filesystem is read-only.
-            return None
+            return -errno.EACCES
         
         obj = self.find_file_within_image(path)
         
         if obj is None or isinstance(obj, Directory):
         
-            return None
+            return -errno.ENOENT
         
         return 0
     
@@ -248,14 +270,14 @@ class ADFS(Fuse):
         
         if obj is None or isinstance(obj, Directory):
         
-            return None
+            return -errno.ENOENT
         
         return obj.data[offset:offset+length]
     
     def write(self, path, buf, offset):
     
         # write is not supported
-        return None
+        return -errno.EACCES
     
     def release(self, path, flags):
     
@@ -287,14 +309,14 @@ class ADFS(Fuse):
         if elements == []:
         
             # Special case for root directory.
-            return Directory("/", objs)
+            return Directory("/", objs, self.root_time)
         
         for this_obj in objs:
         
             # Examine each object and compare its name to the next path
             # element.
             
-            if type(this_obj[1]) != type([]):
+            if isinstance(this_obj, ADFSlib.ADFSfile):
             
                 # A file is found. 
                 obj_name = self.encode_name_from_entry(this_obj)
@@ -307,7 +329,10 @@ class ADFS(Fuse):
                     
                         # This is the last path element; we have found the
                         # required file.
-                        return File(*this_obj)
+                        return File(
+                            this_obj.name, this_obj.data, this_obj.load_address,
+                            this_obj.execution_address, this_obj.length
+                            )
                     
                     else:
                     
@@ -324,24 +349,16 @@ class ADFS(Fuse):
                     
                         # Construct a .inf file to return to the client.
                         file_data = "%s\t%X\t%X\t%X\n" % \
-                            tuple(this_obj[:1] + this_obj[2:])
+                            (this_obj.name, this_obj.load_address,
+                             this_obj.execution_address, this_obj.length)
                         
-                        new_obj = \
-                        (
-                            this_obj[0] + ".inf", file_data,
-                            0, 0, len(file_data)
-                        )
-                        
-                        return File(*new_obj)
-                    
+                        return File(this_obj[0] + ".inf", file_data,
+                                    0, 0, len(file_data))
                     else:
-                    
                         # There are more elements to satisfy but we can
                         # descend no further.
                         return None
-            
             else:
-            
                 # A directory is found.
                 obj_name = self.encode_name_from_entry(this_obj)
                 
@@ -353,14 +370,15 @@ class ADFS(Fuse):
                     
                         # This is the last path element; we have found the
                         # required file.
-                        return Directory(*this_obj)
+                        return Directory(this_obj.name, this_obj.files,
+                                         self.root_time)
                     
                     else:
                     
                         # More path elements need to be satisfied; descend
                         # further.
                         return self.find_file_within_image(
-                            "/".join(elements[1:]), this_obj[1]
+                            "/".join(elements[1:]), this_obj.files
                             )
         
         # No matching objects were found.
@@ -391,7 +409,7 @@ class ADFS(Fuse):
         if isinstance(obj, File):
         
             return self.encode_name_from_entry(
-                (obj.name, obj.data, obj.load, obj.exec_, obj.length)
+                ADFSlib.ADFSfile(obj.name, obj.data, obj.load, obj.exec_, obj.length)
                 )
         
         else:
@@ -400,24 +418,24 @@ class ADFS(Fuse):
     
     def encode_name_from_entry(self, obj):
     
-        name = obj[0]
+        name = obj.name
         
         # If the name contains a slash then replace it with a dot.
         new_name = ".".join(name.split("/"))
         
         if self.adfsdisc.disc_type.find("adE") == 0:
         
-            if type(obj[1]) != type([]) and "." not in new_name:
+            if isinstance(obj, ADFSlib.ADFSfile) and "." not in new_name:
             
                 # Construct a suffix from the object's load address/filetype.
                 
-                info_handler = self.info_handlers.get(obj[2] & 0xfff00, None)
+                info_handler = self.info_handlers.get(obj.load_address & 0xfff00, None)
                 
                 # Provide default values for the file type, MIME type and
                 # length.
-                filetype = (obj[2] >> 8) & 0xfff
+                filetype = obj.filetype()
                 mimetype = None
-                length = obj[4]
+                length = obj.length
                 
                 if info_handler:
                 
@@ -425,8 +443,7 @@ class ADFS(Fuse):
                         obj, filetype, mimetype, length
                         )
                 
-                suffix = "%03x" % filetype
-                new_name = new_name + "." + suffix
+                new_name = new_name + "." + filetype
         
         return new_name
     
@@ -477,44 +494,12 @@ class ADFS(Fuse):
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 3:
+    usage = "Usage: %s [fuse options] <mount point> <image>\n" % sys.argv[0]
     
-        sys.stderr.write(
-            "Usage: %s [fuse options] <mount point> <image>\n" % sys.argv[0]+\
-            "       %s -u <mount point>\n" % sys.argv[0]
-            )
-        sys.exit(1)
-
-    if sys.argv[-2] == "-u":
-        mount = 0
-        mount_point = os.path.abspath(sys.argv[-1])
-    else:
-        mount = 1
-        mount_point = os.path.abspath(sys.argv[-2])
-    
-    if mount == 1:
-    
-        created_mount_point = 0
-        
-        if not os.path.exists(mount_point):
-        
-            os.mkdir(mount_point)
-            created_mount_point = 1
-        
-        elif not os.path.isdir(mount_point):
-        
-            sys.stderr.write("Cannot use %s as a mount point\n" % mount_point)
-            sys.exit(1)
-        
-        server = ADFS(sys.argv[:-1], path = sys.argv[-1])
-        server.multithreaded = 1
-        server.main()
-        
-        if created_mount_point == 1:
-        
-            os.rmdir(mount_point)
-    else:
-    
-        os.system("fusermount -u %s" % mount_point)
+    server = ADFS(version="%prog " + fuse.__version__, usage=usage)
+    server.parser.add_option(mountopt="image", metavar="IMAGE", default="",
+                             help="specify ADFS disk image")
+    server.parse(values=server, errex=1)
+    server.main()
     
     sys.exit(0)
