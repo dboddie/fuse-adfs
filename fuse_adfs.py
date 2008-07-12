@@ -31,8 +31,8 @@ fuse.fuse_python_api = (0, 2)
 import ADFSlib
 
 __author__ = "David Boddie <david@boddie.org.uk>"
-__version__ = "0.11"
-__date__ = "Tuesday 25th March 2008"
+__version__ = "0.20"
+__date__ = "Sunday 29th June 2008"
 __license__ = "GNU General Public License (version 3)"
 
 
@@ -500,6 +500,12 @@ if __name__ == "__main__":
     server.parser.add_option(mountopt="image", metavar="IMAGE", default="",
                              help="specify ADFS disk image")
     server.parse(values=server, errex=1)
-    server.main()
+    
+    try:
+        server.main()
+    
+    except ADFS_Error:
+        sys.stderr.write(usage)
+        sys.exit(1)
     
     sys.exit(0)
