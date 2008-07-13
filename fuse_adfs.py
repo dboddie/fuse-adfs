@@ -494,7 +494,14 @@ class ADFS(Fuse):
 
 if __name__ == "__main__":
 
-    usage = "Usage: %s [fuse options] <mount point> <image>\n" % sys.argv[0]
+    usage = ("fuse_adfs version %(version)s (%(date)s)\n"
+             "Licensed under the %(license)s.\n\n"
+             "Usage: %(app)s <mount point> [fuse options]\n\n"
+             "Mounts a disk image at the specified mount point.\n"
+             'Use fusermount -u <mount point> to dismount the image later.\n\n'
+             "Example: %(app)s /tmp/image -o image=FloppyDisc.adf\n"
+             ) % {"app": sys.argv[0], "version": __version__,
+                  "date": __date__, "license": __license__}
     
     server = ADFS(version="%prog " + fuse.__version__, usage=usage)
     server.parser.add_option(mountopt="image", metavar="IMAGE", default="",

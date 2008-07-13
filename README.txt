@@ -4,7 +4,7 @@ fuse_adfs
 
 :Author: David Boddie
 :Date: 2005-04-29
-:Version: 0.11
+:Version: 0.20
 
 .. contents::
 
@@ -28,29 +28,13 @@ Requirements
 ------------
 
 This utility requires both FUSE_ and the `Python bindings package for FUSE`_.
-At the current time, the Python bindings need to be obtained from the FUSE
-CVS repository. To obtain them, open a shell and find a suitable directory to
-put them. First, log in to the SourceForge CVS server::
+The Python bindings need to be obtained from the FUSE project site - see the
+following Wiki page for more information::
 
-  cvs -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/fuse login
+  http://fuse.sourceforge.net/wiki/index.php/FusePython
 
-The ``cvs`` tool will ask you for a password - just press Return. To retrieve
-the files from the server and put them in a directory called ``python``,
-type::
-
-  cvs -z3 -d:pserver:anonymous@cvs.sourceforge.net:/cvsroot/fuse co -P python
-
-The ``setup.py`` file in the ``python`` directory can be used in the normal
-way. At the command line, type the following::
-
-  cd python
-  python setup.py build
-
-As root, install the Python bindings with the following command::
-
-  python setup.py install
-
-The ``fuse_adfs`` utility can now be installed.
+Follow the instructions given in the package for the Python bindings to install
+them. Once this has been done, the ``fuse_adfs`` utility can be installed.
 
 
 Installing fuse_adfs
@@ -79,12 +63,9 @@ Alternatively, you can type the following as root::
 As a normal user, you can now mount an ADFS image with the ``fuse_adfs.py``
 utility, using the following syntax::
 
-  fuse_adfs.py <mount point> <image path>
+  fuse_adfs.py <mount point> -o image=<image path>
 
-If the mount point does not exist, a directory will be created for it,
-otherwise an existing directory can be used instead. Note that, if the
-directory is not empty, its contents will be inaccessible until after the
-image has been unmounted - they will not be deleted.
+Note that the mount point must refer to an empty directory.
 
 
 Unmounting an image
@@ -92,13 +73,12 @@ Unmounting an image
 
 When you have finished with an image, type::
 
-  fuse_adfs.py -u <mount point>
-
-or type::
-
   fusermount -u <mount point>
 
-The ``fuse_adfs.py`` utility will remove the directory if it created it.
+or type (possibly as root)::
+
+  umount <mount point>
+
 
  .. _FUSE: http://fuse.sourceforge.net/
  .. _`Python bindings package for FUSE`:
