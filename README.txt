@@ -3,8 +3,8 @@ fuse_adfs
 =========
 
 :Author: David Boddie
-:Date: 2005-04-29
-:Version: 0.20
+:Date: 2017-11-25
+:Version: 0.21
 
 .. contents::
 
